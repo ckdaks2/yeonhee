@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>싸이렌</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Helvetica Neue', sans-serif;
+      background: linear-gradient(270deg, #a1c4fd, #c2e9fb);
+      background-size: 400% 400%;
+      animation: gradientBG 12s ease infinite;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 2;
+    }
+
+    button {
+      padding: 15px 30px;
+      font-size: 1.2rem;
+      background-color: #1a6dff;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: transform 0.2s;
+      z-index: 3;
+      user-select: none;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    .message {
+      position: absolute;
+      bottom: 30%;
+      text-align: center;
+      color: #ffffff;
+      font-size: 2rem;
+      font-weight: bold;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .message.show {
+      opacity: 1;
+      animation: pop 0.6s ease forwards;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.5); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    /* ✨ 모달 스타일 */
+    .modal-background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 5;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      width: 80%;
+      max-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: center;
+      font-size: 1.2rem;
+      line-height: 1.6;
+    }
+
+    .modal-content button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 20px;
+      background-color: #1a6dff;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button onclick="showExplosion()">이 버튼을 눌러봐<br>50번 누르면 특별한게 있어요</button>
+    <div id="clickCounter" class="click-counter">지금까지 0번 눌렀어요</div>
+    <div class="message" id="healingMessage">🌿 여뉘야 너는 최고야ㅋ 🌸</div>
+    <canvas id="backgroundCanvas"></canvas>
+  </div>
+
+  <!-- 🎁 모달 -->
+  <div class="modal-background" id="modal">
+    <div class="modal-content">
+      <p>🎉참 잘했어요ㅋ 💖</p>
+      <button onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+
+  <style>
+    /* 👇 카운터 스타일 추가 */
+    .click-counter {
+      margin-top: 15px;
+      color: white;
+      font-size: 1.1rem;
+      z-index: 3;
+    }
+  </style>
+
+  <script>
+    const message = document.getElementById('healingMessage');
+    const canvas = document.getElementById('backgroundCanvas');
+    const ctx = canvas.getContext('2d');
+    const modal = document.getElementById('modal');
+    const counterText = document.getElementById('clickCounter');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let fireworks = [];
+    let clickCount = 0;
+    let messageShown = false;
+
+    function createExplosion(x, y) {
+      const colors = ['#ff7675', '#74b9ff', '#55efc4', '#ffeaa7', '#a29bfe'];
+      for (let i = 0; i < 50; i++) {
+        fireworks.push({
+          x, y,
+          angle: Math.random() * 2 * Math.PI,
+          speed: Math.random() * 5 + 2,
+          r: Math.random() * 4 + 1,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1
+        });
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      fireworks.forEach((f, i) => {
+        f.x += Math.cos(f.angle) * f.speed;
+        f.y += Math.sin(f.angle) * f.speed;
+        f.alpha -= 0.02;
+        if (f.alpha <= 0) {
+          fireworks.splice(i, 1);
+        } else {
+          ctx.beginPath();
+          ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fillStyle = f.color;
+          ctx.globalAlpha = f.alpha;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      });
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    function showExplosion() {
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2.5;
+      createExplosion(centerX, centerY);
+
+      if (!messageShown) {
+        message.classList.add('show');
+        messageShown = true;
+      }
+
+      clickCount++;
+      counterText.textContent = `지금까지 ${clickCount}번 눌렀어요`;
+
+      if (clickCount === 50) {
+        modal.style.display = 'flex';
+      }
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
